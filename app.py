@@ -3,6 +3,7 @@ import pandas as pd
 import plotly.express as px
 import numpy as np
 
+from datetime import datetime
 from st_aggrid import AgGrid
 
 from helpers import db_functions as dbf
@@ -18,8 +19,8 @@ st.set_page_config(
 st.header("Blick Content Dashboard")
 
 #races
-races = dbf.get_races_dp()
-races_2025 = races[(races['Seasoncode'] == 2025) & (races['Disciplinecode'] == "SL") & (races['Gender'] == "W")]
+races = dbf.get_races_dp(2025, "W", "SL")
+races_2025 = races
 st.write("GS W Season 2024/2025")
 races_2025
 
@@ -59,18 +60,27 @@ def create_nation_cup_df(wc_points_df):
     df_grp = df.groupby(['Nation', 'Discipline']).sum().reset_index()
     return df_grp
 
+def get_current_season(date):
+    month = date.month
+    if month >= 5:
+        season = date.year +1
+    else:
+        season = date.year
+    return season
 
+#get data overall
+df_results_wcpoints_overall = create_wc_points_df(season=2025, genders=['All'], disciplines=['All'])
+df_nations_cup_overall = df_results_wcpoints_overall[['Nation', 'WCPoints']]
+df_nations_cup_overall_grp = df_nations_cup_overall.groupby(['Nation']).sum().reset_index().sort_values(by=['WCPoints'], ascending=False)
 
-
+#get top 5 nations
+top5_nations = df_nations_cup_overall_grp.head(5)
 
 
 tab1, tab2 = st.tabs(["Overall", "By Gender and Discipline"])
 with tab1:
         st.subheader("Overall Points Nations")
-        df_results_wcpoints_overall = create_wc_points_df(season=2025, genders=['All'], disciplines=['All'])
-        df_nations_cup_overall = df_results_wcpoints_overall[['Nation', 'WCPoints']]
-        df_nations_cup_overall_grp = df_nations_cup_overall.groupby(['Nation']).sum().reset_index().sort_values(by=['WCPoints'], ascending=False)
-
+        
         overall_nation_cup_fig = px.bar(
             df_nations_cup_overall_grp,
             x="Nation",
@@ -152,6 +162,25 @@ with tab2:
     gender_filter = filter1.selectbox(":blue[Gender]", options=GENDER) 
     discipline_filter = filter2.selectbox(":blue[Discipline]", options=DISCIPLINES)
 
+    #get upcoming race and last race
+    # date_today = datetime.today()
+    # season = get_current_season(date_today)
+    #!for testing
+    date_today = datetime.strptime("2025-02-12", "%Y-%m-%d")
+    season = get_current_season(date_today)
+
+    #!will not work for gender=All and discipline=All
+    df_races_season = dbf.get_races_dp(season,gender_filter, discipline_filter)
+
+    #last race
+    past_races = df_races_season[df_races_season['Racedate'] < date_today.date()]
+    last_race = past_races[past_races['Racedate'] == max(past_races['Racedate'])]
+
+    #next race
+    future_races = df_races_season[df_races_season['Racedate'] >= date_today.date()]
+    next_race = future_races[future_races['Racedate'] == min(future_races['Racedate'])]
+
+
 
     # Get results and wc points of selected discipline and gender
     df_results_wcpoints = create_wc_points_df(season=2025, genders=[gender_filter], disciplines=[discipline_filter])
@@ -202,7 +231,17 @@ with tab2:
     # Card views (1st View)
 
 
+
+
     # Line Charts (2nd View)
+    ##ToDO: Create df with Nation, Racenumber, WCPoints of top 5 nations
+    ##ToDO: Racenumber: all races that belong to the same event have the same racenumber; eventid in get_races
+    ##get top 5 nations
+    top5 = top5_nations['Nation'].tolist()
+    df_top5 = df_results_wcpoints[(df_results_wcpoints['Nation'].isin(top5)) & (df_results_wcpoints['WCPoints']!=0)][['Raceid', 'Racedate', 'Place', 'Nation', 'Discipline', 'WCPoints']]
+    df_top5_grp = df_top5.groupby(by=['Raceid', 'Racedate', 'Place', 'Nation', 'Discipline']).sum().reset_index()
+    df_top5_grp['CalendarWeek'] = pd.to_datetime(df_top5_grp['Racedate']).dt.isocalendar().week
+    df_top5_grp
     
 
 

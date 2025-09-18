@@ -16,16 +16,17 @@ def load_datapool(query):
     return pd.DataFrame(rows)
 
 @st.cache_data(ttl='2h', show_spinner='Fetching new data...')
-def get_races_dp():
-    query_races = """
+def get_races_dp(season, gender, discipline):
+    query_races = f"""
     SELECT Raceid, Eventid, Seasoncode, Disciplinecode, Catcode, Gender, Racedate, Place, Nationcode, Sectorcode, Disciplinename, Catname, Livestatus1, Webcomment  
     FROM swissski-production.raw_fis.fis_races
-    WHERE Catcode="WC" AND Sectorcode="AL" AND Seasoncode > 2023 ;
+    WHERE Catcode="WC" AND Sectorcode="AL" AND Seasoncode = {season} AND Gender = '{gender}' AND Disciplinecode = '{discipline}';
     """
 
     df = load_datapool(query_races)
 
     return df
+
 
 def get_fis_results():
     query_races = """
