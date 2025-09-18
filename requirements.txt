@@ -1,0 +1,9 @@
+streamlit == 1.49.0
+pandas == 2.2.3
+plotly
+google-auth == 2.38.0
+google-cloud-bigquery
+streamlit-dynamic-filters
+google-oauth2-tool
+streamlit-option-menu
+streamlit-aggrid == 0.3.4
