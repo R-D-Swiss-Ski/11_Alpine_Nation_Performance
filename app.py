@@ -7,7 +7,7 @@ from st_aggrid import AgGrid
 
 from helpers import db_functions as dbf
 from helpers.constants import WORLDCUP_POINTS, WORLDCUP_FINALS, WORLDCUP_POINTS_FINALS, GENDER, DISCIPLINES
-from helpers.ag_grid_options import grid_options_2
+from helpers.ag_grid_options import custom_css, grid_options, grid_options_1
 
 st.set_page_config(
     initial_sidebar_state="collapsed",
@@ -94,55 +94,55 @@ with tab1:
         
         df_summary_wc_points = df_summary_table[['Nation', 'Discipline', 'WCPoints']].groupby(['Nation', 'Discipline']).sum().reset_index()
         total_points = df_summary_wc_points['WCPoints'].sum()
+
+
         
         dh_points = df_summary_wc_points[df_summary_wc_points['Discipline']=="DH"]['WCPoints'].sum()
         sg_points = df_summary_wc_points[df_summary_wc_points['Discipline']=="SG"]['WCPoints'].sum()
         gs_points = df_summary_wc_points[df_summary_wc_points['Discipline']=="GS"]['WCPoints'].sum()
         sl_points = df_summary_wc_points[df_summary_wc_points['Discipline']=="SL"]['WCPoints'].sum()
-        
+
 
         # Example dictionary of discipline totals
         discipline_totals = {
             "DH": dh_points,
             "SG": sg_points,
             "GS": gs_points,
-            "SL": sl_points
+            "SL": sl_points,
+            "Overall": total_points
         }
+        df_overall_nation = df_nations_cup_overall_grp
+        df_overall_nation['Discipline'] = "Overall"
 
+        df_summary_wc_points_perc = pd.concat([df_summary_wc_points, df_overall_nation], ignore_index=True)
         # Map each discipline to its total
-        df_summary_wc_points['TotalPoints'] = df_summary_wc_points['Discipline'].map(discipline_totals)
+        df_summary_wc_points_perc['TotalPoints'] = df_summary_wc_points_perc['Discipline'].map(discipline_totals)
 
         # Compute percentage
-        df_summary_wc_points['Percentage'] = (
-            df_summary_wc_points['WCPoints'] / df_summary_wc_points['TotalPoints'] * 100
-        ).fillna(0).round(2)
-            
+        df_summary_wc_points_perc['Percentage'] = (
+            df_summary_wc_points_perc['WCPoints'] / df_summary_wc_points_perc['TotalPoints'] * 100
+        ).fillna(0).round(1)
 
-                
-        df_summary_counts = (
-            df_summary_table
-            .groupby(['Nation', 'Discipline', 'rank_group'])
-            .size()
-            .reset_index(name='Count')
-        )
-        df_summary_pivot = df_summary_counts.pivot_table(
-            index=['Nation', 'Discipline'], 
-            columns='rank_group', 
-            values='Count', 
-            aggfunc=sum,
-            fill_value=0
-        )
-        df_summary_pivot = df_summary_pivot.reset_index()
-        df_summary_all = pd.merge(df_summary_pivot, df_summary_wc_points, how="left", on=['Nation', 'Discipline'])
         
-        st.dataframe(
-             df_summary_all,
-             width="stretch",
-             hide_index=True,
-             column_order=['Nation', 'Discipline', 'Wins', '2nd', '3rd', '[4-15]', '[16-30]', 'WCPoints', 'Percentage']
-        )
-        AgGrid(df_summary_all, gridOptions=grid_options_2)
-       
+            
+        #unpivot df_summary_wc_points without percentages
+        df_summary_wc_points_unpivot = df_summary_wc_points[['Nation', 'Discipline', 'WCPoints']].rename(columns={'WCPoints': 'value'})
+        df_summary_wc_points_unpivot['column_name'] = 'WCPoints'
+        df_summary_percentage_unpivot = df_summary_wc_points_perc[['Nation', 'Discipline', 'Percentage']].rename(columns={'Percentage': 'value'})
+        df_summary_percentage_unpivot['value'] = df_summary_percentage_unpivot['value'].round(1)
+        df_summary_percentage_unpivot['column_name'] = 'Points %'
+        
+
+        df_nation_summary = df_summary_table[['Nation', 'Discipline', 'Position', 'rank_group']].rename(columns={'Position': 'value', 'rank_group': 'column_name'})
+        df_nation_summary = pd.concat([df_nation_summary, df_summary_wc_points_unpivot], ignore_index=True)
+        df_nation_summary = df_nation_summary.sort_values(by=['value'], ascending=False, ignore_index=True)
+        
+        AgGrid(df_nation_summary, gridOptions=grid_options, height = 350, custom_css=custom_css, allow_unsafe_jscode=True)
+
+        st.write("Percentage of Points by each Nation")
+        df_summary_percentage_unpivot = df_summary_percentage_unpivot.sort_values(by=['value'], ascending=False, ignore_index=True)
+        AgGrid(df_summary_percentage_unpivot, gridOptions=grid_options_1, height = 350, custom_css=custom_css, allow_unsafe_jscode=True)
+
 
 
 
@@ -197,6 +197,13 @@ with tab2:
     )
     st.subheader("Nations Ranking per Discipline")
     st.plotly_chart(nation_cup_fig, use_container_width=True)
+
+
+    # Card views (1st View)
+
+
+    # Line Charts (2nd View)
+    
 
 
 
