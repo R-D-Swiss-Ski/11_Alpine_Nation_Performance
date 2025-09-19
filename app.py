@@ -18,18 +18,6 @@ st.set_page_config(
 
 st.header("Blick Content Dashboard")
 
-#races
-races = dbf.get_races_dp(2025, "W", "SL")
-races_2025 = races
-st.write("GS W Season 2024/2025")
-races_2025
-
-#result of specific race
-race_id = 123167
-result = dbf.get_result(race_id)
-st.write("Specific race: ", race_id)
-result
-
 
 
 def create_wc_points_df(season, genders, disciplines):
@@ -59,6 +47,21 @@ def create_nation_cup_df(wc_points_df):
     df = wc_points_df[['Nation', 'WCPoints', 'Discipline']]
     df_grp = df.groupby(['Nation', 'Discipline']).sum().reset_index()
     return df_grp
+
+def get_races(season, gender, discipline):
+    races = pd.DataFrame()
+    if 'All' in discipline:
+        discipline = ['GS', 'SL', 'DH', 'SG']
+    if 'All' in gender:
+        gender = ['M', 'W']
+    for d in discipline:
+        for g in gender:
+            race = dbf.get_races_dp(season=season, discipline=d, gender=g)
+            races = pd.concat([race, races], ignore_index=True)
+    # drop cancelled races
+    races = races[races['Webcomment'] != "Cancelled"]
+    
+    return races
 
 def get_current_season(date):
     month = date.month
@@ -166,19 +169,26 @@ with tab2:
     # date_today = datetime.today()
     # season = get_current_season(date_today)
     #!for testing
-    date_today = datetime.strptime("2025-02-12", "%Y-%m-%d")
+    date_today = datetime.strptime("2025-02-28", "%Y-%m-%d")
     season = get_current_season(date_today)
 
-    #!will not work for gender=All and discipline=All
-    df_races_season = dbf.get_races_dp(season,gender_filter, discipline_filter)
+
+    df_races_season = get_races(season,[gender_filter], [discipline_filter])
+    st.write(df_races_season)
 
     #last race
     past_races = df_races_season[df_races_season['Racedate'] < date_today.date()]
-    last_race = past_races[past_races['Racedate'] == max(past_races['Racedate'])]
+    if not past_races.empty:
+        last_race = past_races[past_races['Racedate'] == max(past_races['Racedate'])]
+    else:
+        last_race = pd.DataFrame()
 
     #next race
     future_races = df_races_season[df_races_season['Racedate'] >= date_today.date()]
-    next_race = future_races[future_races['Racedate'] == min(future_races['Racedate'])]
+    if not future_races.empty:
+        next_race = future_races[future_races['Racedate'] == min(future_races['Racedate'])]
+    else:
+        next_race = pd.DataFrame()
 
 
 
@@ -229,19 +239,60 @@ with tab2:
 
 
     # Card views (1st View)
+    ##Nation, Points, Points by gender, delta to last race
+    past_races_ids = past_races['Raceid'].unique()
+    past_races_wc_points = df_results_wcpoints[df_results_wcpoints['Raceid'].isin(past_races_ids)]
+    past_races_wc_points_grp = past_races_wc_points[['Nation', 'Gender', 'Discipline', 'WCPoints']].groupby(['Nation', 'Gender', 'Discipline'], as_index=False).sum()
+
+    all_races_wc_points_grp = df_results_wcpoints[['Nation', 'Gender', 'Discipline', 'WCPoints']].groupby(['Nation', 'Gender', 'Discipline'], as_index=False).sum()
+  
+    df_results_wcpoints_delta = pd.merge(all_races_wc_points_grp, past_races_wc_points_grp, how='right', on=['Nation', 'Discipline'], suffixes=('_current', '_past'))
+    df_results_wcpoints_delta['Delta']=df_results_wcpoints_delta['WCPoints_current']-df_results_wcpoints_delta['WCPoints_past']
+    df_results_wcpoints_delta = df_results_wcpoints_delta.sort_values(by=['WCPoints_current'], ascending=False)
+    
+    for index,row in df_results_wcpoints_delta.iterrows():
+        st.metric(label=f"World Cup Points", value=f"{row['Nation']} {row['WCPoints_current']}", delta=row['Delta'])
+
+
+
+
+
+
 
 
 
 
     # Line Charts (2nd View)
-    ##ToDO: Create df with Nation, Racenumber, WCPoints of top 5 nations
-    ##ToDO: Racenumber: all races that belong to the same event have the same racenumber; eventid in get_races
+    st.subheader("Points per Raceweek Top 5 Nations")
+
     ##get top 5 nations
     top5 = top5_nations['Nation'].tolist()
     df_top5 = df_results_wcpoints[(df_results_wcpoints['Nation'].isin(top5)) & (df_results_wcpoints['WCPoints']!=0)][['Raceid', 'Racedate', 'Place', 'Nation', 'Discipline', 'WCPoints']]
     df_top5_grp = df_top5.groupby(by=['Raceid', 'Racedate', 'Place', 'Nation', 'Discipline']).sum().reset_index()
-    df_top5_grp['CalendarWeek'] = pd.to_datetime(df_top5_grp['Racedate']).dt.isocalendar().week
-    df_top5_grp
+    
+    df_top5_grp['Racedate'] = pd.to_datetime(df_top5_grp['Racedate'])
+
+    # Get calendar week
+    df_top5_grp["CalendarWeek"] = df_top5_grp["Racedate"].dt.isocalendar().week
+
+    # Map calendar weeks to sequential race weeks
+    week_map = {cw: i+1 for i, cw in enumerate(sorted(df_top5_grp["CalendarWeek"].unique()))}
+    df_top5_grp["Raceweek"] = df_top5_grp["CalendarWeek"].map(week_map)
+
+  
+    fig_points_per_week = px.line(
+        df_top5_grp[['Nation', 'Raceweek', 'Raceid', 'WCPoints', 'Discipline']].groupby(['Raceweek', 'Nation'], as_index=False).aggregate({
+            "Raceid": "count",
+            "WCPoints": "sum",
+            "Discipline": list
+        }).rename(columns={"Raceid": "Race(s)"}),
+        x='Raceweek',
+        y='WCPoints',
+        color='Nation',
+        hover_data=['Race(s)', 'Discipline']
+    )
+    fig_points_per_week.update_traces(mode="markers+lines")
+    st.plotly_chart(fig_points_per_week, use_container_width=True)
     
 
 
