@@ -168,8 +168,11 @@ if st.session_state.main:
             df_summary_percentage_unpivot['value'] = df_summary_percentage_unpivot['value'].round(1)
             df_summary_percentage_unpivot['column_name'] = 'Points %'
             
-
-            df_nation_summary = df_summary_table[['Nation', 'Discipline', 'Position', 'rank_group']].rename(columns={'Position': 'value', 'rank_group': 'column_name'})
+    
+            df_nation_summary = df_summary_table[['Nation', 'Discipline', 'rank_group']]
+            df_nation_summary = df_nation_summary.groupby(['Nation', 'Discipline', 'rank_group']).size().reset_index(name='count')
+            df_nation_summary = df_nation_summary.rename(columns={'rank_group': 'column_name', 'count': 'value'})
+ 
             df_nation_summary = pd.concat([df_nation_summary, df_summary_wc_points_unpivot], ignore_index=True)
             df_nation_summary = df_nation_summary.sort_values(by=['value'], ascending=False, ignore_index=True)
             
