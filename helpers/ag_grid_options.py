@@ -38,6 +38,10 @@ grid_options = {
 
         },
         {
+            'field': 'Gender',
+            'rowGroup': True
+        },
+        {
             "field": "column_name",
             "pivot": True,
             "pivotComparator": JsCode("""function(a, b) {

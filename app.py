@@ -279,13 +279,15 @@ if st.session_state.main:
 
             #Wins, 2nd, 3rd, 4-15, 16-30 per nation and discipline AND points per nation and discipline AND % Points
             st.subheader("Summary Table")
-            
-            df_summary_table = df_results_wcpoints_overall[['Nation', 'Position', 'Discipline', 'WCPoints']]
+
+            df_summary_table = df_results_wcpoints_overall[['Nation', 'Position', 'Discipline', 'WCPoints', 'Gender']]
             df_summary_table = df_summary_table[(df_summary_table['Position'] != 0) & (df_summary_table['WCPoints']!= 0)]
             df_summary_table['rank_group'] = df_summary_table['Position'].apply(lambda x: "Wins" if x == 1 else ("2nd" if x== 2 else ("3rd" if x==3 else ( "[4-15]" if x in [4,5,6,7,8,9,10,11,12,13,14,15] else ("[16-30]" if x in [16,17,18,19,20,21,22,23,24,25,26,27,28,29,30] else "")))))
             
             df_summary_wc_points = df_summary_table[['Nation', 'Discipline', 'WCPoints']].groupby(['Nation', 'Discipline']).sum().reset_index()
+            df_summary_wc_points_gender = df_summary_table[['Nation', 'Discipline', 'WCPoints', 'Gender']].groupby(['Nation', 'Discipline', 'Gender']).sum().reset_index()
             total_points = df_summary_wc_points['WCPoints'].sum()
+
 
 
             
@@ -295,7 +297,7 @@ if st.session_state.main:
             sl_points = df_summary_wc_points[df_summary_wc_points['Discipline']=="SL"]['WCPoints'].sum()
 
 
-            # Example dictionary of discipline totals
+            #discipline totals
             discipline_totals = {
                 "DH": dh_points,
                 "SG": sg_points,
@@ -314,21 +316,18 @@ if st.session_state.main:
             df_summary_wc_points_perc['Percentage'] = (
                 df_summary_wc_points_perc['WCPoints'] / df_summary_wc_points_perc['TotalPoints'] * 100
             ).fillna(0).round(1)
-
-            
                 
             #unpivot df_summary_wc_points without percentages
-            df_summary_wc_points_unpivot = df_summary_wc_points[['Nation', 'Discipline', 'WCPoints']].rename(columns={'WCPoints': 'value'})
+            df_summary_wc_points_unpivot = df_summary_wc_points_gender[['Nation', 'Discipline', 'WCPoints', 'Gender']].rename(columns={'WCPoints': 'value'})
             df_summary_wc_points_unpivot['column_name'] = 'WCPoints'
             df_summary_percentage_unpivot = df_summary_wc_points_perc[['Nation', 'Discipline', 'Percentage']].rename(columns={'Percentage': 'value'})
             df_summary_percentage_unpivot['value'] = df_summary_percentage_unpivot['value'].round(1)
             df_summary_percentage_unpivot['column_name'] = 'Points %'
             
-    
-            df_nation_summary = df_summary_table[['Nation', 'Discipline', 'rank_group']]
-            df_nation_summary = df_nation_summary.groupby(['Nation', 'Discipline', 'rank_group']).size().reset_index(name='count')
+            
+            df_nation_summary = df_summary_table[['Nation', 'Discipline', 'Gender', 'rank_group']]
+            df_nation_summary = df_nation_summary.groupby(['Nation', 'Discipline', 'Gender', 'rank_group']).size().reset_index(name='count')
             df_nation_summary = df_nation_summary.rename(columns={'rank_group': 'column_name', 'count': 'value'})
- 
             df_nation_summary = pd.concat([df_nation_summary, df_summary_wc_points_unpivot], ignore_index=True)
             df_nation_summary = df_nation_summary.sort_values(by=['value'], ascending=False, ignore_index=True)
             
