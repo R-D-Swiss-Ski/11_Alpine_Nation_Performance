@@ -56,3 +56,39 @@ WORLDCUP_POINTS_FINALS={
 DISCIPLINES={"DH": "Downhill", "SG": "Super-G", "GS": "Giant Slalom", "SL": "Slalom", "All": "Overall"}
 
 GENDER={"M": "Men", "W": "Women", "All": "Overall"}
+
+#colors
+COLOR_NATIONS={
+    "SUI": "#BA2C11",
+    "AUT": "#EDC00C",
+    "ITA": "#1E1F9E",
+    "NOR": "#8543B5",
+    "USA": "#2F9C44",
+    "FRA": "#28C7C1",
+    "GER": "#9B4C4D",
+    "SWE": "#CBB602",
+    "SLO": "#462D89",
+    "CAN": "#D8B506",
+    "CRO": "#E8E209",
+    "BRA": "#A0A49A",
+    "NZL": "#09BE84",
+    "ALB": "#A33DF9",
+    "CZE": "#2CCF7B",
+    "GBR": "#4FF64C", 
+    "BEL": "#202121",
+    "BUL": "#6B0E81",
+    "AND": "#016C8F",
+    "FIN": "#4981A8",
+    "POL": "#ED23A6",
+    "EST": "#F3E56D",
+    "BIH": "#79D290",
+    "ESP": "#BD8421",
+    "SVK": "#03A2BB",
+    "GRE": "#8F1458",
+    "LAT": "#61EDD7",
+    "CHI": "#0D6B3F",
+    "NED": "#506DAA",
+    "JPN": "#D5A476",
+    "LIE": "#AD1423",
+    "ARG": "#3B925B"
+}
