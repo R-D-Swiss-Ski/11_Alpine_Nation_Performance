@@ -55,6 +55,11 @@ df_nations_cup_overall_grp = df_nations_cup_overall.groupby(['Nation']).sum().re
 
 #get top 5 nations
 top5_nations = df_nations_cup_overall_grp.head(5)
+# Get unique nations
+nations = df_nations_cup_overall_grp["Nation"].unique()
+#only color top 5 nations, rest grey
+color_mapping = {nation: COLOR_NATIONS.get(nation, "#8D8D8D") if nation in top5_nations['Nation'].values else '#8D8D8D' for nation in nations}
+
 
 #*Set page title
 if st.session_state.main:
@@ -104,15 +109,8 @@ if st.session_state.main:
         # only nations that have points
         df_nations_cup_points = df_nations_cup[df_nations_cup['WCPoints'] != 0].reset_index(drop=True)
 
-
-        # Get unique nations
-        nations = df_nations_cup_points["Nation"].unique()
         #create nation-gender column
         df_nations_cup_points["Nation_Gender"] = df_nations_cup_points["Nation"] + "-" + df_nations_cup_points["Gender"]
-
-        #only color top 5 nations, rest grey
-        color_mapping = {nation: COLOR_NATIONS.get(nation, "#8D8D8D") if nation in top5_nations['Nation'].values else '#8D8D8D' for nation in nations}
-
 
         # Build Nation-Gender colormap
         color_nation_gender_mapping = {}
@@ -267,7 +265,9 @@ if st.session_state.main:
                 df_nations_cup_overall_grp,
                 x="Nation",
                 y="WCPoints",
+                color="Nation",
                 text="WCPoints", 
+                color_discrete_map=color_mapping
             )
             overall_nation_cup_fig.update_traces(textposition="outside")
             overall_nation_cup_fig.update_layout(
