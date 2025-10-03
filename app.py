@@ -1,14 +1,12 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-import numpy as np
 
 from datetime import datetime
 from st_aggrid import AgGrid
 
-from helpers import db_functions as dbf
 from helpers import data_functions as d
-from helpers.constants import WORLDCUP_POINTS, WORLDCUP_FINALS, WORLDCUP_POINTS_FINALS, GENDER, DISCIPLINES, COLOR_NATIONS
+from helpers.constants import GENDER, DISCIPLINES, COLOR_NATIONS
 from helpers.ag_grid_options import custom_css, grid_options, grid_options_1
 
 st.set_page_config(
@@ -16,8 +14,6 @@ st.set_page_config(
     page_title="Alpine Nation Performance",
     layout="wide",
     )
-
-
 
 
 
@@ -66,87 +62,6 @@ if st.session_state.main:
 
 if st.session_state.main:
     tab1, tab2 = st.tabs(["By Gender and Discipline", "Overall"])
-    with tab2:
-            st.subheader("Overall Points Nations")
-            
-            overall_nation_cup_fig = px.bar(
-                df_nations_cup_overall_grp,
-                x="Nation",
-                y="WCPoints",
-                text="WCPoints", 
-            )
-            overall_nation_cup_fig.update_traces(textposition="outside")
-            overall_nation_cup_fig.update_layout(
-                yaxis_title="WC Points",
-                xaxis_title="Nation",
-            )
-
-            st.plotly_chart(overall_nation_cup_fig, use_container_width=True)
-
-            #Wins, 2nd, 3rd, 4-15, 16-30 per nation and discipline AND points per nation and discipline AND % Points
-            st.subheader("Summary Table")
-            
-            df_summary_table = df_results_wcpoints_overall[['Nation', 'Position', 'Discipline', 'WCPoints']]
-            df_summary_table = df_summary_table[(df_summary_table['Position'] != 0) & (df_summary_table['WCPoints']!= 0)]
-            df_summary_table['rank_group'] = df_summary_table['Position'].apply(lambda x: "Wins" if x == 1 else ("2nd" if x== 2 else ("3rd" if x==3 else ( "[4-15]" if x in [4,5,6,7,8,9,10,11,12,13,14,15] else ("[16-30]" if x in [16,17,18,19,20,21,22,23,24,25,26,27,28,29,30] else "")))))
-            
-            df_summary_wc_points = df_summary_table[['Nation', 'Discipline', 'WCPoints']].groupby(['Nation', 'Discipline']).sum().reset_index()
-            total_points = df_summary_wc_points['WCPoints'].sum()
-
-
-            
-            dh_points = df_summary_wc_points[df_summary_wc_points['Discipline']=="DH"]['WCPoints'].sum()
-            sg_points = df_summary_wc_points[df_summary_wc_points['Discipline']=="SG"]['WCPoints'].sum()
-            gs_points = df_summary_wc_points[df_summary_wc_points['Discipline']=="GS"]['WCPoints'].sum()
-            sl_points = df_summary_wc_points[df_summary_wc_points['Discipline']=="SL"]['WCPoints'].sum()
-
-
-            # Example dictionary of discipline totals
-            discipline_totals = {
-                "DH": dh_points,
-                "SG": sg_points,
-                "GS": gs_points,
-                "SL": sl_points,
-                "Overall": total_points
-            }
-            df_overall_nation = df_nations_cup_overall_grp
-            df_overall_nation['Discipline'] = "Overall"
-
-            df_summary_wc_points_perc = pd.concat([df_summary_wc_points, df_overall_nation], ignore_index=True)
-            # Map each discipline to its total
-            df_summary_wc_points_perc['TotalPoints'] = df_summary_wc_points_perc['Discipline'].map(discipline_totals)
-
-            # Compute percentage
-            df_summary_wc_points_perc['Percentage'] = (
-                df_summary_wc_points_perc['WCPoints'] / df_summary_wc_points_perc['TotalPoints'] * 100
-            ).fillna(0).round(1)
-
-            
-                
-            #unpivot df_summary_wc_points without percentages
-            df_summary_wc_points_unpivot = df_summary_wc_points[['Nation', 'Discipline', 'WCPoints']].rename(columns={'WCPoints': 'value'})
-            df_summary_wc_points_unpivot['column_name'] = 'WCPoints'
-            df_summary_percentage_unpivot = df_summary_wc_points_perc[['Nation', 'Discipline', 'Percentage']].rename(columns={'Percentage': 'value'})
-            df_summary_percentage_unpivot['value'] = df_summary_percentage_unpivot['value'].round(1)
-            df_summary_percentage_unpivot['column_name'] = 'Points %'
-            
-    
-            df_nation_summary = df_summary_table[['Nation', 'Discipline', 'rank_group']]
-            df_nation_summary = df_nation_summary.groupby(['Nation', 'Discipline', 'rank_group']).size().reset_index(name='count')
-            df_nation_summary = df_nation_summary.rename(columns={'rank_group': 'column_name', 'count': 'value'})
- 
-            df_nation_summary = pd.concat([df_nation_summary, df_summary_wc_points_unpivot], ignore_index=True)
-            df_nation_summary = df_nation_summary.sort_values(by=['value'], ascending=False, ignore_index=True)
-            
-            AgGrid(df_nation_summary, gridOptions=grid_options, height = 350, custom_css=custom_css, allow_unsafe_jscode=True)
-
-            st.write("Percentage of Points by each Nation")
-            df_summary_percentage_unpivot = df_summary_percentage_unpivot.sort_values(by=['value'], ascending=False, ignore_index=True)
-            AgGrid(df_summary_percentage_unpivot, gridOptions=grid_options_1, height = 350, custom_css=custom_css, allow_unsafe_jscode=True)
-
-
-
-
     with tab1:
         filter1, filter2, filter3 = st.columns(3)
 
@@ -242,8 +157,7 @@ if st.session_state.main:
         st.subheader("Nations Ranking per Discipline")
         st.plotly_chart(nation_cup_fig, use_container_width=True)
 
-
-        # Card views (1st View)
+        #*Card views (1st View)
         ##Nation, Points, Points by gender, delta to last race
         past_races_ids = past_races['Raceid'].unique()
         past_races_wc_points = df_results_wcpoints[df_results_wcpoints['Raceid'].isin(past_races_ids)]
@@ -313,7 +227,7 @@ if st.session_state.main:
                             st.button("Details", on_click=details, args=(row['Nation'], row['Gender'], discipline_filter), key=f"details_{i}")
 
 
-        # Line Charts (2nd View)
+        #*Line Charts (2nd View)
         st.subheader("Points per Raceweek Top 5 Nations")
 
         ##get top 5 nations
@@ -340,51 +254,168 @@ if st.session_state.main:
             x='Raceweek',
             y='WCPoints',
             color='Nation',
-            hover_data=['Race(s)', 'Discipline']
+            hover_data=['Race(s)', 'Discipline'],
+            color_discrete_map=COLOR_NATIONS
         )
         fig_points_per_week.update_traces(mode="markers+lines")
         st.plotly_chart(fig_points_per_week, use_container_width=True)
+    
+    with tab2:
+            st.subheader("Overall Points Nations")
+            
+            overall_nation_cup_fig = px.bar(
+                df_nations_cup_overall_grp,
+                x="Nation",
+                y="WCPoints",
+                text="WCPoints", 
+            )
+            overall_nation_cup_fig.update_traces(textposition="outside")
+            overall_nation_cup_fig.update_layout(
+                yaxis_title="WC Points",
+                xaxis_title="Nation",
+            )
+
+            st.plotly_chart(overall_nation_cup_fig, use_container_width=True)
+
+            #Wins, 2nd, 3rd, 4-15, 16-30 per nation and discipline AND points per nation and discipline AND % Points
+            st.subheader("Summary Table")
+            
+            df_summary_table = df_results_wcpoints_overall[['Nation', 'Position', 'Discipline', 'WCPoints']]
+            df_summary_table = df_summary_table[(df_summary_table['Position'] != 0) & (df_summary_table['WCPoints']!= 0)]
+            df_summary_table['rank_group'] = df_summary_table['Position'].apply(lambda x: "Wins" if x == 1 else ("2nd" if x== 2 else ("3rd" if x==3 else ( "[4-15]" if x in [4,5,6,7,8,9,10,11,12,13,14,15] else ("[16-30]" if x in [16,17,18,19,20,21,22,23,24,25,26,27,28,29,30] else "")))))
+            
+            df_summary_wc_points = df_summary_table[['Nation', 'Discipline', 'WCPoints']].groupby(['Nation', 'Discipline']).sum().reset_index()
+            total_points = df_summary_wc_points['WCPoints'].sum()
+
+
+            
+            dh_points = df_summary_wc_points[df_summary_wc_points['Discipline']=="DH"]['WCPoints'].sum()
+            sg_points = df_summary_wc_points[df_summary_wc_points['Discipline']=="SG"]['WCPoints'].sum()
+            gs_points = df_summary_wc_points[df_summary_wc_points['Discipline']=="GS"]['WCPoints'].sum()
+            sl_points = df_summary_wc_points[df_summary_wc_points['Discipline']=="SL"]['WCPoints'].sum()
+
+
+            # Example dictionary of discipline totals
+            discipline_totals = {
+                "DH": dh_points,
+                "SG": sg_points,
+                "GS": gs_points,
+                "SL": sl_points,
+                "Overall": total_points
+            }
+            df_overall_nation = df_nations_cup_overall_grp
+            df_overall_nation['Discipline'] = "Overall"
+
+            df_summary_wc_points_perc = pd.concat([df_summary_wc_points, df_overall_nation], ignore_index=True)
+            # Map each discipline to its total
+            df_summary_wc_points_perc['TotalPoints'] = df_summary_wc_points_perc['Discipline'].map(discipline_totals)
+
+            # Compute percentage
+            df_summary_wc_points_perc['Percentage'] = (
+                df_summary_wc_points_perc['WCPoints'] / df_summary_wc_points_perc['TotalPoints'] * 100
+            ).fillna(0).round(1)
+
+            
+                
+            #unpivot df_summary_wc_points without percentages
+            df_summary_wc_points_unpivot = df_summary_wc_points[['Nation', 'Discipline', 'WCPoints']].rename(columns={'WCPoints': 'value'})
+            df_summary_wc_points_unpivot['column_name'] = 'WCPoints'
+            df_summary_percentage_unpivot = df_summary_wc_points_perc[['Nation', 'Discipline', 'Percentage']].rename(columns={'Percentage': 'value'})
+            df_summary_percentage_unpivot['value'] = df_summary_percentage_unpivot['value'].round(1)
+            df_summary_percentage_unpivot['column_name'] = 'Points %'
+            
+    
+            df_nation_summary = df_summary_table[['Nation', 'Discipline', 'rank_group']]
+            df_nation_summary = df_nation_summary.groupby(['Nation', 'Discipline', 'rank_group']).size().reset_index(name='count')
+            df_nation_summary = df_nation_summary.rename(columns={'rank_group': 'column_name', 'count': 'value'})
+ 
+            df_nation_summary = pd.concat([df_nation_summary, df_summary_wc_points_unpivot], ignore_index=True)
+            df_nation_summary = df_nation_summary.sort_values(by=['value'], ascending=False, ignore_index=True)
+            
+            AgGrid(df_nation_summary, gridOptions=grid_options, height = 350, custom_css=custom_css, allow_unsafe_jscode=True)
+
+            st.write("Percentage of Points by each Nation")
+            df_summary_percentage_unpivot = df_summary_percentage_unpivot.sort_values(by=['value'], ascending=False, ignore_index=True)
+            AgGrid(df_summary_percentage_unpivot, gridOptions=grid_options_1, height = 350, custom_css=custom_css, allow_unsafe_jscode=True)
+
+
+
+
+
 
 if st.session_state.details:
     st.button("Go Back", on_click=go_back)
-    
+    df_details = st.session_state.df.copy()
+    df_details = df_details[df_details['WCPoints']!=0]
     #*Points per Race Week
-    st.subheader(f"{st.session_state.nation} Points per Race Week")
+    # st.subheader(f"{st.session_state.nation} Points per Race Week")
+    # df_detail_nation = st.session_state.df.copy()
+    # df_detail_nation = df_detail_nation[df_detail_nation['Nation'] == st.session_state.nation][['Raceid', 'Racedate', 'Place', 'Nation', 'Discipline', 'WCPoints']]
+    # df_detail_nation_grp = df_detail_nation.groupby(by=['Raceid', 'Racedate', 'Place', 'Nation', 'Discipline']).sum().reset_index()
+        
+    # df_detail_nation_grp['Racedate'] = pd.to_datetime(df_detail_nation_grp['Racedate'])
+
+    # # Get calendar week
+    # df_detail_nation_grp["CalendarWeek"] = df_detail_nation_grp["Racedate"].dt.isocalendar().week
+
+    # # Map calendar weeks to sequential race weeks
+    # week_map = {cw: i+1 for i, cw in enumerate(sorted(df_detail_nation_grp["CalendarWeek"].unique()))}
+    # df_detail_nation_grp["Raceweek"] = df_detail_nation_grp["CalendarWeek"].map(week_map)
+
+
+    # fig_points_per_week_single = px.line(
+    #     df_detail_nation_grp[['Nation', 'Raceweek', 'Raceid', 'WCPoints', 'Discipline']].groupby(['Raceweek', 'Nation'], as_index=False).aggregate({
+    #         "Raceid": "count",
+    #         "WCPoints": "sum",
+    #         "Discipline": list
+    #     }).rename(columns={"Raceid": "Race(s)"}),
+    #     x='Raceweek',
+    #     y='WCPoints',
+    #     color='Nation',
+    #     hover_data=['Race(s)', 'Discipline']
+    # )
+    # fig_points_per_week_single.update_traces(mode="markers+lines")
+    # st.plotly_chart(fig_points_per_week_single, use_container_width=True)
+
+
+    df_athletes = df_details[(df_details['Nation'] == st.session_state.nation)& (df_details['Position']!=0)][["Gender", "Racedate", "Place", "Discipline", "Position", "Competitorname", "WCPoints"]]
+    df_athletes = df_athletes.sort_values(by=['Racedate', 'Position'])
+    
+    #*Bar Chart Race with scoring athletes and points scored
+    df_athletes_bar_chart = df_athletes.copy()
+    df_athletes_bar_chart['Race'] = df_athletes_bar_chart['Racedate'].astype(str) + " " + df_athletes_bar_chart['Place']
+
+    st.subheader(f"Points per Race")
     discipline_title = DISCIPLINES.get(st.session_state.discipline)
     gender_title = GENDER.get(st.session_state.gender)
     st.write(f"{st.session_state.nation} {discipline_title} {gender_title}")
-    df_detail_nation = st.session_state.df.copy()
-    df_detail_nation = df_detail_nation[df_detail_nation['Nation'] == st.session_state.nation][['Raceid', 'Racedate', 'Place', 'Nation', 'Discipline', 'WCPoints']]
-    df_detail_nation_grp = df_detail_nation.groupby(by=['Raceid', 'Racedate', 'Place', 'Nation', 'Discipline']).sum().reset_index()
-        
-    df_detail_nation_grp['Racedate'] = pd.to_datetime(df_detail_nation_grp['Racedate'])
 
-    # Get calendar week
-    df_detail_nation_grp["CalendarWeek"] = df_detail_nation_grp["Racedate"].dt.isocalendar().week
-
-    # Map calendar weeks to sequential race weeks
-    week_map = {cw: i+1 for i, cw in enumerate(sorted(df_detail_nation_grp["CalendarWeek"].unique()))}
-    df_detail_nation_grp["Raceweek"] = df_detail_nation_grp["CalendarWeek"].map(week_map)
-
-
-    fig_points_per_week_single = px.line(
-        df_detail_nation_grp[['Nation', 'Raceweek', 'Raceid', 'WCPoints', 'Discipline']].groupby(['Raceweek', 'Nation'], as_index=False).aggregate({
-            "Raceid": "count",
-            "WCPoints": "sum",
-            "Discipline": list
-        }).rename(columns={"Raceid": "Race(s)"}),
-        x='Raceweek',
-        y='WCPoints',
-        color='Nation',
-        hover_data=['Race(s)', 'Discipline']
+    fig_athlete_points_per_race = px.bar(
+        df_athletes_bar_chart,
+        x="Race",
+        y="WCPoints",
+        color="Competitorname",
+        text="WCPoints",
+        hover_data={
+            "Discipline":True,
+            "Race":False,
+            "Racedate": True,
+            "Place": True
+        },
+        labels={
+            "Competitorname": "Athlete",
+            "Racedate": "Date"
+        }
     )
-    fig_points_per_week_single.update_traces(mode="markers+lines")
-    st.plotly_chart(fig_points_per_week_single, use_container_width=True)
+    fig_athlete_points_per_race.update_xaxes(
+        tickangle = -45,
 
+        title_standoff = 25)
+    fig_athlete_points_per_race.update_layout(
+        height=600
+    )
+    st.plotly_chart(fig_athlete_points_per_race, use_container_width=True)
 
-    df_athletes = st.session_state.df[(st.session_state.df['Nation'] == st.session_state.nation)& (st.session_state.df['Position']!=0)][["Gender", "Racedate", "Place", "Discipline", "Position", "Competitorname", "WCPoints"]]
-    df_athletes = df_athletes.sort_values(by=['Racedate', 'Position'])
-    
     #*Scoring athletes table
     st.subheader("Scoring Athletes")
     st.dataframe(
