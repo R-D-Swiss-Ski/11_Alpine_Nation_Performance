@@ -7,75 +7,27 @@ from datetime import datetime
 from st_aggrid import AgGrid
 
 from helpers import db_functions as dbf
-from helpers.constants import WORLDCUP_POINTS, WORLDCUP_FINALS, WORLDCUP_POINTS_FINALS, GENDER, DISCIPLINES
+from helpers import data_functions as d
+from helpers.constants import WORLDCUP_POINTS, WORLDCUP_FINALS, WORLDCUP_POINTS_FINALS, GENDER, DISCIPLINES, COLOR_NATIONS
 from helpers.ag_grid_options import custom_css, grid_options, grid_options_1
 
 st.set_page_config(
     initial_sidebar_state="collapsed",
-    page_title="Content Dashboard",
+    page_title="Alpine Nation Performance",
     layout="wide",
     )
 
-st.header("Blick Content Dashboard")
 
 
 
-def create_wc_points_df(season, genders, disciplines):
-    results = pd.DataFrame()
-    if 'All' in disciplines:
-         disciplines = ['GS', 'SL', 'DH', 'SG']
-    if 'All' in genders:
-        genders = ['M', 'W']
-    for discipline in disciplines:
-        for gender in genders:
-            result = dbf.get_results(season=season, discipline=discipline, gender=gender)
-            results = pd.concat([result, results], ignore_index=True)
 
-    results = results.rename(columns={"Competitor_Nationcode": "Nation", 'Disciplinecode': 'Discipline'})
-    # drop cancelled races
-    results = results[results['Webcomment'] != "Cancelled"]
-    ## map world cup points
-    results['isFinal'] = results['Raceid'].apply(lambda x: True if x in WORLDCUP_FINALS else False)
-    results['WCPoints'] = 0
-    mask = results['isFinal']
-    results.loc[mask, 'WCPoints'] = results.loc[mask, 'Position'].map(WORLDCUP_POINTS_FINALS).fillna(0)
-    results.loc[~mask, 'WCPoints'] = results.loc[~mask, 'Position'].map(WORLDCUP_POINTS).fillna(0)
-    return results
-
-def create_nation_cup_df(wc_points_df):
-    #Nation Cup Standing 
-    df = wc_points_df[['Nation', 'WCPoints', 'Discipline']]
-    df_grp = df.groupby(['Nation', 'Discipline']).sum().reset_index()
-    return df_grp
-
-def get_races(season, gender, discipline):
-    races = pd.DataFrame()
-    if 'All' in discipline:
-        discipline = ['GS', 'SL', 'DH', 'SG']
-    if 'All' in gender:
-        gender = ['M', 'W']
-    for d in discipline:
-        for g in gender:
-            race = dbf.get_races_dp(season=season, discipline=d, gender=g)
-            races = pd.concat([race, races], ignore_index=True)
-    # drop cancelled races
-    races = races[races['Webcomment'] != "Cancelled"]
-    
-    return races
-
-def get_current_season(date):
-    month = date.month
-    if month >= 5:
-        season = date.year +1
-    else:
-        season = date.year
-    return season
-
-def details(nation):
+def details(nation, gender, discipline):
     st.session_state.details = True
     st.session_state.main=False
     st.session_state.df = df_results_wcpoints
     st.session_state.nation = nation
+    st.session_state.gender=gender
+    st.session_state.discipline=discipline
 
 def go_back():
     st.session_state.details = False
@@ -94,13 +46,23 @@ if 'df' not in st.session_state:
 if 'nation' not in st.session_state:
     st.session_state.nation = ""
 
+if 'gender' not in st.session_state:
+    st.session_state.gender = ""
+
+if 'discipline' not in st.session_state:
+    st.session_state.discipline =""
+
 #get data overall
-df_results_wcpoints_overall = create_wc_points_df(season=2025, genders=['All'], disciplines=['All'])
+df_results_wcpoints_overall = d.create_wc_points_df(season=2025, genders=['All'], disciplines=['All'])
 df_nations_cup_overall = df_results_wcpoints_overall[['Nation', 'WCPoints']]
 df_nations_cup_overall_grp = df_nations_cup_overall.groupby(['Nation']).sum().reset_index().sort_values(by=['WCPoints'], ascending=False)
 
 #get top 5 nations
 top5_nations = df_nations_cup_overall_grp.head(5)
+
+#*Set page title
+if st.session_state.main:
+    st.header("Alpine Nation Performance")
 
 if st.session_state.main:
     tab1, tab2 = st.tabs(["By Gender and Discipline", "Overall"])
@@ -196,10 +158,10 @@ if st.session_state.main:
         # season = get_current_season(date_today)
         #!for testing
         date_today = datetime.strptime("2025-02-28", "%Y-%m-%d")
-        season = get_current_season(date_today)
+        season = d.get_current_season(date_today)
 
 
-        df_races_season = get_races(season,[gender_filter], [discipline_filter])
+        df_races_season = d.get_races(season,[gender_filter], [discipline_filter])
      
 
         #last race
@@ -219,47 +181,64 @@ if st.session_state.main:
 
 
         # Get results and wc points of selected discipline and gender
-        df_results_wcpoints = create_wc_points_df(season=2025, genders=[gender_filter], disciplines=[discipline_filter])
+        df_results_wcpoints = d.create_wc_points_df(season=2025, genders=[gender_filter], disciplines=[discipline_filter])
         
         # create nations cup df
-        df_nations_cup = create_nation_cup_df(df_results_wcpoints)
+        df_nations_cup = d.create_nation_cup_df(df_results_wcpoints)
         
         # only nations that have points
         df_nations_cup_points = df_nations_cup[df_nations_cup['WCPoints'] != 0].reset_index(drop=True)
 
-        # df with all nations
 
         # Get unique nations
         nations = df_nations_cup_points["Nation"].unique()
+        #create nation-gender column
+        df_nations_cup_points["Nation_Gender"] = df_nations_cup_points["Nation"] + "-" + df_nations_cup_points["Gender"]
 
-        # Define a color palette large enough (Plotly built-in or custom)
-        # Plotly has many: px.colors.qualitative.Set1, Set2, Set3, Bold, Pastel, Dark24, etc.
-        palette = px.colors.qualitative.Light24  
+        #only color top 5 nations, rest grey
+        color_mapping = {nation: COLOR_NATIONS.get(nation, "#8D8D8D") if nation in top5_nations['Nation'].values else '#8D8D8D' for nation in nations}
 
-        # Assign each nation a unique color (cycling avoided if palette length >= nations)
-        color_map = {nation: palette[i % len(palette)] for i, nation in enumerate(nations)}
 
+        # Build Nation-Gender colormap
+        color_nation_gender_mapping = {}
+        for nation, base_color in color_mapping.items():
+            if base_color != "#8D8D8D":
+                color_nation_gender_mapping[f"{nation}-M"] = d.adjust_lightness(base_color, 0.8)  # darker
+                color_nation_gender_mapping[f"{nation}-W"] = d.adjust_lightness(base_color, 1.2)  # lighter
+            else:
+                color_nation_gender_mapping[f"{nation}-M"] = "#8D8D8D"  # darker
+                color_nation_gender_mapping[f"{nation}-W"] = "#CCCCCC"  # lighter
+
+        nation_order = (
+            df_nations_cup_points.groupby("Nation")["WCPoints"]
+            .sum()
+            .sort_values(ascending=False)
+            .index.tolist()
+        )
         nation_cup_fig = px.bar(
             df_nations_cup_points,
-            x="Discipline",
+            x="Nation",
             y="WCPoints",
-            color="Nation",
-            barmode="group",
-            text="WCPoints", 
-            color_discrete_map=color_map
+            color="Nation_Gender",
+            barmode="stack",
+            facet_col="Discipline",
+            facet_col_wrap=2,
+            category_orders={
+                "Nation": nation_order,
+                "Gender": ["M", "F"]
+            },
+            color_discrete_map=color_nation_gender_mapping,
+            text="WCPoints",
+            hover_data={'Nation_Gender': False, "Gender": True}
         )
-        nation_cup_fig.update_traces(textposition="outside")
+
         nation_cup_fig.update_layout(
-            legend=dict(
-                orientation="h",   # horizontal
-                yanchor="bottom",
-                y=1.05,
-                xanchor="center",
-                x=0.5
-            ),
-            yaxis_title="WC Points",
-            xaxis_title="Discipline",
+            height=600,
+            xaxis_title="Nation",
+            yaxis_title="WCPoints",
+            showlegend=False,
         )
+
         st.subheader("Nations Ranking per Discipline")
         st.plotly_chart(nation_cup_fig, use_container_width=True)
 
@@ -311,7 +290,7 @@ if st.session_state.main:
                                 delta=row['delta'],
                             )
                         with cols[3]:
-                            st.button("Details", on_click=details, args=(row['Nation'],), key=f"details_{i}")
+                            st.button("Details", on_click=details, args=(row['Nation'],'All', discipline_filter), key=f"details_{i}")
 
                     else:
                         with cols[0]:
@@ -331,7 +310,7 @@ if st.session_state.main:
                                 delta=row['delta'],
                             )
                         with cols[3]:
-                            st.button("Details", on_click=details, args=(row['Nation'],), key=f"details_{i}")
+                            st.button("Details", on_click=details, args=(row['Nation'], row['Gender'], discipline_filter), key=f"details_{i}")
 
 
         # Line Charts (2nd View)
@@ -368,8 +347,12 @@ if st.session_state.main:
 
 if st.session_state.details:
     st.button("Go Back", on_click=go_back)
+    
+    #*Points per Race Week
     st.subheader(f"{st.session_state.nation} Points per Race Week")
-
+    discipline_title = DISCIPLINES.get(st.session_state.discipline)
+    gender_title = GENDER.get(st.session_state.gender)
+    st.write(f"{st.session_state.nation} {discipline_title} {gender_title}")
     df_detail_nation = st.session_state.df.copy()
     df_detail_nation = df_detail_nation[df_detail_nation['Nation'] == st.session_state.nation][['Raceid', 'Racedate', 'Place', 'Nation', 'Discipline', 'WCPoints']]
     df_detail_nation_grp = df_detail_nation.groupby(by=['Raceid', 'Racedate', 'Place', 'Nation', 'Discipline']).sum().reset_index()
@@ -397,8 +380,12 @@ if st.session_state.details:
     )
     fig_points_per_week_single.update_traces(mode="markers+lines")
     st.plotly_chart(fig_points_per_week_single, use_container_width=True)
-    df_athletes = st.session_state.df[(st.session_state.df['Nation'] == st.session_state.nation)& (st.session_state.df['Position']!=0)][["Racedate", "Place", "Discipline", "Position", "Competitorname", "WCPoints"]]
+
+
+    df_athletes = st.session_state.df[(st.session_state.df['Nation'] == st.session_state.nation)& (st.session_state.df['Position']!=0)][["Gender", "Racedate", "Place", "Discipline", "Position", "Competitorname", "WCPoints"]]
     df_athletes = df_athletes.sort_values(by=['Racedate', 'Position'])
+    
+    #*Scoring athletes table
     st.subheader("Scoring Athletes")
     st.dataframe(
         df_athletes,
