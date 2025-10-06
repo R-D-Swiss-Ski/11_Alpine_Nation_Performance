@@ -16,16 +16,16 @@ def create_wc_points_df(season, genders, disciplines):
         for gender in genders:
             result = dbf.get_results(season=season, discipline=discipline, gender=gender)
             results = pd.concat([result, results], ignore_index=True)
-
-    results = results.rename(columns={"Competitor_Nationcode": "Nation", 'Disciplinecode': 'Discipline'})
-    # drop cancelled races
-    results = results[results['Webcomment'] != "Cancelled"]
-    ## map world cup points
-    results['isFinal'] = results['Raceid'].apply(lambda x: True if x in WORLDCUP_FINALS else False)
-    results['WCPoints'] = 0
-    mask = results['isFinal']
-    results.loc[mask, 'WCPoints'] = results.loc[mask, 'Position'].map(WORLDCUP_POINTS_FINALS).fillna(0)
-    results.loc[~mask, 'WCPoints'] = results.loc[~mask, 'Position'].map(WORLDCUP_POINTS).fillna(0)
+    if not results.empty:
+        results = results.rename(columns={"Competitor_Nationcode": "Nation", 'Disciplinecode': 'Discipline'})
+        # drop cancelled races
+        results = results[results['Webcomment'] != "Cancelled"]
+        ## map world cup points
+        results['isFinal'] = results['Raceid'].apply(lambda x: True if x in WORLDCUP_FINALS else False)
+        results['WCPoints'] = 0
+        mask = results['isFinal']
+        results.loc[mask, 'WCPoints'] = results.loc[mask, 'Position'].map(WORLDCUP_POINTS_FINALS).fillna(0)
+        results.loc[~mask, 'WCPoints'] = results.loc[~mask, 'Position'].map(WORLDCUP_POINTS).fillna(0)
     return results
 
 
@@ -50,7 +50,7 @@ def get_races(season, gender, discipline):
     
     return races
 
-def get_current_season(date):
+def get_season(date):
     month = date.month
     if month >= 5:
         season = date.year +1
