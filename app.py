@@ -7,7 +7,7 @@ from st_aggrid import AgGrid
 
 from helpers import data_functions as d
 from helpers.constants import GENDER, DISCIPLINES, COLOR_NATIONS, FIS_SEASON
-from helpers.ag_grid_options import custom_css, grid_options, grid_options_1
+from helpers.ag_grid_options import custom_css, grid_options, grid_options_1, grid_options_2
 
 st.set_page_config(
     initial_sidebar_state="collapsed",
@@ -70,6 +70,7 @@ if not df_results_wcpoints_overall.empty:
 
     #get top 5 nations
     top5_nations = df_nations_cup_overall_grp.head(5)
+    top5 = top5_nations['Nation'].tolist()
     # Get unique nations
     nations = df_nations_cup_overall_grp["Nation"].unique()
     #only color top 5 nations, rest grey
@@ -239,7 +240,7 @@ if not df_results_wcpoints_overall.empty:
             st.subheader("Points per Raceweek Top 5 Nations")
 
             ##get top 5 nations
-            top5 = top5_nations['Nation'].tolist()
+            
             df_top5 = df_results_wcpoints[(df_results_wcpoints['Nation'].isin(top5)) & (df_results_wcpoints['WCPoints']!=0)][['Raceid', 'Racedate', 'Place', 'Nation', 'Discipline', 'WCPoints']]
             df_top5_grp = df_top5.groupby(by=['Raceid', 'Racedate', 'Place', 'Nation', 'Discipline']).sum().reset_index()
             
@@ -247,11 +248,12 @@ if not df_results_wcpoints_overall.empty:
 
             # Get calendar week
             df_top5_grp["CalendarWeek"] = df_top5_grp["Racedate"].dt.isocalendar().week
-
-            # Map calendar weeks to sequential race weeks
-            week_map = {cw: i+1 for i, cw in enumerate(sorted(df_top5_grp["CalendarWeek"].unique()))}
-            df_top5_grp["Raceweek"] = df_top5_grp["CalendarWeek"].map(week_map)
-
+            # create Raceweeks
+            week_order = (
+                df_top5_grp.groupby("CalendarWeek")['Racedate'].min().sort_values().reset_index()
+            )
+            week_order['Raceweek'] = range(1, len(week_order)+1)
+            df_top5_grp = df_top5_grp.merge(week_order[["CalendarWeek", "Raceweek"]], on="CalendarWeek", how="left")
         
             fig_points_per_week = px.line(
                 df_top5_grp[['Nation', 'Raceweek', 'Raceid', 'WCPoints', 'Discipline']].groupby(['Raceweek', 'Nation'], as_index=False).aggregate({
@@ -339,10 +341,10 @@ if not df_results_wcpoints_overall.empty:
                 #unpivot df_summary_wc_points_perc with percentages
                 df_summary_percentage_unpivot = df_summary_wc_points_perc[['Nation', 'Discipline', 'Percentage']].rename(columns={'Percentage': 'value'})
                 df_summary_percentage_unpivot['value'] = df_summary_percentage_unpivot['value'].round(1)
-                df_summary_percentage_unpivot['column_name'] = 'Points %'
+                df_summary_percentage_unpivot['column_name'] = '% Points'
                 #unpivot df_summary_wc_points_gender_perc
                 df_summary_gender_perc_unpivot = df_summary_wc_points_gender_perc[['Nation', 'Discipline', 'Gender', 'Percentage']].rename(columns={'Percentage': 'value'})
-                df_summary_gender_perc_unpivot['column_name'] = df_summary_gender_perc_unpivot['Gender'].apply(lambda x: 'Points M %' if x == 'M' else 'Points W %')
+                df_summary_gender_perc_unpivot['column_name'] = df_summary_gender_perc_unpivot['Gender'].apply(lambda x: '% Points M' if x == 'M' else '% Points W')
                 
                 df_summary_percentage_unpivot = pd.concat([df_summary_percentage_unpivot, df_summary_gender_perc_unpivot[['Nation', 'Discipline', 'value', 'column_name']]], ignore_index=True)
                 
@@ -354,10 +356,10 @@ if not df_results_wcpoints_overall.empty:
                 
                 AgGrid(df_nation_summary, gridOptions=grid_options, height = 350, custom_css=custom_css, allow_unsafe_jscode=True)
 
-                st.subheader("Percentage of Points by each Nation with Gender Contribution")
+                #* Percentage Points Tables
+                ##* Percentage Points by each Nation with Gender Contribution
                 # Define the custom nation order
                 nation_order = df_nations_cup_overall_grp['Nation']
-
                 # Create a mapping for sorting
                 nation_sort_map = {nation: i for i, nation in enumerate(nation_order)}
 
@@ -365,12 +367,115 @@ if not df_results_wcpoints_overall.empty:
                 df_summary_percentage_unpivot['nation_sort_key'] = df_summary_percentage_unpivot['Nation'].map(nation_sort_map).fillna(999)
                 df_summary_percentage_unpivot = df_summary_percentage_unpivot.sort_values(by=['nation_sort_key', 'value'], ascending=[True, False], ignore_index=True)
                 df_summary_percentage_unpivot = df_summary_percentage_unpivot.drop('nation_sort_key', axis=1)
+                
+                st.subheader("Percentage of Points by each Nation with Gender Contribution")
                 AgGrid(df_summary_percentage_unpivot, gridOptions=grid_options_1, height = 350, custom_css=custom_css, allow_unsafe_jscode=True)
 
+                ##* Percentage Points by Nation per Race Week
+                # create race weeks
+                df_percentage_per_raceweek = df_results_wcpoints_overall[df_results_wcpoints_overall['WCPoints']!=0].copy()
+                df_percentage_per_raceweek["CalendarWeek"] = pd.to_datetime(df_percentage_per_raceweek["Racedate"]).dt.isocalendar().week
+                week_order = (
+                    df_percentage_per_raceweek.groupby("CalendarWeek")['Racedate'].min().sort_values().reset_index()
+                )
+                week_order['Raceweek'] = range(1, len(week_order)+1)
+                df_percentage_per_raceweek_general = df_percentage_per_raceweek.merge(week_order[["CalendarWeek", "Raceweek"]], on="CalendarWeek", how="left")
+                df_percentage_per_raceweek = df_percentage_per_raceweek_general[['Nation', 'Discipline', 'WCPoints','Gender', 'Raceweek']].groupby(['Nation', 'Discipline', 'Gender', 'Raceweek']).sum().reset_index()
+                df_percentage_per_raceweek_all = df_percentage_per_raceweek_general[['Nation', 'Discipline', 'WCPoints', 'Raceweek']].groupby(['Nation', 'Discipline', 'Raceweek']).sum().reset_index()
+                
+                #how many percentages of the achievable pints did a nation get in one raceweek?
+                df_total_points_per_raceweek_overall = df_percentage_per_raceweek[['Raceweek', 'WCPoints']].groupby('Raceweek').sum().reset_index()
+                df_total_points_per_raceweek = df_percentage_per_raceweek[['Raceweek', 'WCPoints', 'Discipline', 'Gender']].groupby(['Raceweek', 'Discipline', 'Gender']).sum().reset_index()
+                df_total_points_per_raceweek = df_total_points_per_raceweek.rename(columns={'WCPoints': 'TotalPoints'})
+                
+                df_total_points_per_raceweek_all = df_percentage_per_raceweek_all[['Raceweek', 'WCPoints', 'Discipline']].groupby(['Raceweek', 'Discipline']).sum().reset_index()
+                df_total_points_per_raceweek_all = df_total_points_per_raceweek_all.rename(columns={'WCPoints': 'TotalPoints'})
+                
+                
+                df_percentage_per_raceweek = df_percentage_per_raceweek.merge(df_total_points_per_raceweek, on=['Raceweek', 'Discipline', 'Gender'], how='left')
+                df_percentage_per_raceweek['Percentage'] = df_percentage_per_raceweek['WCPoints'] / df_percentage_per_raceweek['TotalPoints'] *100
+                df_percentage_per_raceweek_all = df_percentage_per_raceweek_all.merge(df_total_points_per_raceweek_all, on=['Raceweek', 'Discipline'], how='left')
+                df_percentage_per_raceweek_all['Percentage'] = df_percentage_per_raceweek_all['WCPoints'] / df_percentage_per_raceweek_all['TotalPoints'] *100
+                
+                df_percentage_per_raceweek_unpivot = df_percentage_per_raceweek[['Nation', 'Discipline', 'Gender', 'Raceweek', 'Percentage']]
+                df_percentage_per_raceweek_unpivot = df_percentage_per_raceweek_unpivot.rename(columns={'Percentage':'value'})
+                df_percentage_per_raceweek_unpivot['column_name'] = df_percentage_per_raceweek_unpivot['Gender'].apply(lambda x: '% Points M' if x == 'M' else '% Points W')
+                
+                
+                df_percentage_per_raceweek_all_unpivot = df_percentage_per_raceweek_all[['Nation', 'Discipline', 'Raceweek', 'Percentage']]
+                df_percentage_per_raceweek_all_unpivot = df_percentage_per_raceweek_all_unpivot.rename(columns={'Percentage':'value'})
+                df_percentage_per_raceweek_all_unpivot['column_name'] = '% Points'
+                
+                
+                df_percentage_per_raceweek_everything_unpivot = pd.concat([df_percentage_per_raceweek_all_unpivot, df_percentage_per_raceweek_unpivot[['Nation', 'Discipline', 'Raceweek', 'value', 'column_name']]], ignore_index=True)
+                # Sort by nation order first, then by value descending
+                df_percentage_per_raceweek_everything_unpivot['nation_sort_key'] = df_percentage_per_raceweek_everything_unpivot['Nation'].map(nation_sort_map).fillna(999)
+                df_percentage_per_raceweek_everything_unpivot = df_percentage_per_raceweek_everything_unpivot.sort_values(by=['nation_sort_key', 'value'], ascending=[True, False], ignore_index=True)
+                df_percentage_per_raceweek_everything_unpivot = df_percentage_per_raceweek_everything_unpivot.drop('nation_sort_key', axis=1)
+                st.subheader("Percentage of Points by each Nation per Raceweek")
+                st.write("wiht Gender Contribution")
+                AgGrid(df_percentage_per_raceweek_everything_unpivot, gridOptions=grid_options_2, height = 350, custom_css=custom_css, allow_unsafe_jscode=True)
 
 
+                only_top5 = st.toggle("Top 5", key="show_top5")
+                if only_top5:
+                    df_percentage_per_raceweek = df_percentage_per_raceweek[df_percentage_per_raceweek['Nation'].isin(top5)]
+                    
+                
+                df_percentage_per_raceweek['Nation_Gender'] = df_percentage_per_raceweek['Nation'] + "-" + df_percentage_per_raceweek['Gender']
+                # Build Nation-Gender colormap
+                color_nation_gender_mapping = {}
+                for nation, base_color in color_mapping.items():
+                    if base_color != "#8D8D8D":
+                        color_nation_gender_mapping[f"{nation}-M"] = d.adjust_lightness(base_color, 0.8)  # darker
+                        color_nation_gender_mapping[f"{nation}-W"] = d.adjust_lightness(base_color, 1.2)  # lighter
+                    else:
+                        color_nation_gender_mapping[f"{nation}-M"] = "#8D8D8D"  # darker
+                        color_nation_gender_mapping[f"{nation}-W"] = "#CCCCCC"  # lighter
 
 
+            
+                ##* Percentage Points by Nation per Raceweek plot
+                df_percentage_per_raceweek['Percentage'] = df_percentage_per_raceweek_all['Percentage'].round(1) 
+                
+                percentage_nation_raceweek_fig = px.bar(
+                    df_percentage_per_raceweek,
+                    x='Raceweek',
+                    y='Percentage',
+                    color="Nation_Gender",
+                    barmode="stack",
+                    facet_col="Discipline",
+                    facet_col_wrap=2,
+                    color_discrete_map=color_nation_gender_mapping,
+                    hover_data={'Nation_Gender': False, "Gender": True, 'Nation': True}
+                    
+                )
+                percentage_nation_raceweek_fig.update_layout(
+                    showlegend=False,
+                    height=600
+                    
+                )
+                percentage_nation_raceweek_fig.for_each_annotation(lambda a: a.update(text=f"<b>{a.text.split('=')[-1]}</b>"))
+
+                st.plotly_chart(percentage_nation_raceweek_fig)
+
+                # perc_nation_raceweek_line_fig = px.line(
+                #     df_percentage_per_raceweek_all,
+                #     x='Raceweek',
+                #     y='Percentage',
+                #     color='Nation',
+                #     color_discrete_map= color_mapping,
+                #     facet_row='Discipline',
+                   
+                # )
+                # perc_nation_raceweek_line_fig.update_traces(mode="markers+lines")
+                # perc_nation_raceweek_line_fig.update_layout(
+                #     height=600,
+                #     showlegend=False,
+                # )
+                # perc_nation_raceweek_line_fig.for_each_annotation(lambda a: a.update(text=a.text.split('=')[-1]))
+
+                # st.plotly_chart(perc_nation_raceweek_line_fig)
 
     if st.session_state.details:
         st.button("Go Back", on_click=go_back)
