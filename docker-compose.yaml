@@ -1,0 +1,70 @@
+version: '3.8'
+
+services:
+  streamlit:
+    image: python:3.9
+    working_dir: /app
+    volumes:
+      - streamlit_data:/app
+      - /etc/letsencrypt/live/dev.streamlit.swiss-ski.ch/fullchain.pem:/certs/fullchain.pem:ro
+      - /etc/letsencrypt/live/dev.streamlit.swiss-ski.ch/privkey.pem:/certs/privkey.pem:ro
+    ports:
+      - "8507:8501"
+    command: >
+      bash -c "
+        pip install --no-cache-dir streamlit &&
+        mkdir -p /root/.streamlit &&
+        echo -e '[server]\\nport = 8501\\naddress = \"0.0.0.0\"\\nsslCertFile = \"/certs/fullchain.pem\"\\nsslKeyFile = \"/certs/privkey.pem\"' > /root/.streamlit/config.toml &&
+        touch /app/app.py
+        streamlit run /app/app.py"
+    restart: always
+    healthcheck:
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8501 || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+
+  filemanager:
+    image: php:apache
+    ports:
+      - "8550:443"
+    volumes:
+      - streamlit_data:/app
+      - /etc/letsencrypt/live/dev.streamlit.swiss-ski.ch/fullchain.pem:/etc/ssl/certs/fullchain.pem:ro
+      - /etc/letsencrypt/live/dev.streamlit.swiss-ski.ch/privkey.pem:/etc/ssl/private/privkey.pem:ro
+    working_dir: /app
+    environment:
+      - PHP_UPLOAD_MAX_FILESIZE=100M
+    restart: no
+    command: >
+      bash -c "
+        apt-get update && apt-get install -y curl &&
+        mkdir -p /app &&
+        curl -sSL https://raw.githubusercontent.com/prasathmani/tinyfilemanager/master/tinyfilemanager.php -o /app/index.php &&
+        sed -i \"s/'admin' => .*;/'admin' => 'meinpasswort';/\" /app/index.php &&
+        sed -i \"s/\\\$use_md5_passwords = true;/\\\$use_md5_passwords = false;/\" /app/index.php &&
+        sed -i 's@header(\"Location: index.php/\");@// header entfernt für direkten Zugriff ohne redirect@' /app/index.php &&
+        chown -R www-data:www-data /app &&
+        a2enmod ssl &&
+        echo '<VirtualHost *:443>
+          ServerName dev.streamlit.swiss-ski.ch
+          ServerAlias dev.streamlit.swiss-ski.ch:8550
+          UseCanonicalName On
+          DocumentRoot /app
+          SSLEngine on
+          SSLCertificateFile /etc/ssl/certs/fullchain.pem
+          SSLCertificateKeyFile /etc/ssl/private/privkey.pem
+
+          <Directory \"/app\">
+              Options Indexes FollowSymLinks
+              AllowOverride All
+              Require all granted
+          </Directory>
+        </VirtualHost>' > /etc/apache2/sites-available/default-ssl.conf &&
+        echo 'ServerName dev.streamlit.swiss-ski.ch:8550' > /etc/apache2/conf-available/servername.conf &&
+        a2enconf servername &&
+        a2ensite default-ssl &&
+        apache2-foreground"
+
+volumes:
+  streamlit_data:
