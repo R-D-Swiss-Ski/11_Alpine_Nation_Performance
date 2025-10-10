@@ -5,12 +5,17 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: streamlit_app
+    container_name: streamlit_nation_cup
     ports:
-      - "8507:8501"
+      - "8507:8501"  # external:internal → accessible at http://<server>:8507
     restart: always
     environment:
-      - STREAMLIT_SERVER_PORT=8501
       - STREAMLIT_SERVER_ADDRESS=0.0.0.0
+      - STREAMLIT_SERVER_PORT=8501
+      # Optional: set to 'true' to suppress Streamlit's "update available" notice
+      - STREAMLIT_DISABLE_SERVER_HEADLESS_WARNING=true
+
     volumes:
-      - ./data:/app/data  # optional persistent storage (can remove if not needed)
+      # Mount your Let's Encrypt certs read-only
+      - /etc/letsencrypt/live/dev.streamlit.swiss-ski.ch/fullchain.pem:/certs/fullchain.pem:ro
+      - /etc/letsencrypt/live/dev.streamlit.swiss-ski.ch/privkey.pem:/certs/privkey.pem:ro
