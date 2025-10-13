@@ -101,3 +101,67 @@ FIS_SEASON={
     2022: '21/22',
     2021: '20/21'
 }
+
+RANKING_2025={
+    'SL_M': [
+        "KRISTOFFERSEN Henrik",
+        "MEILLARD Loic",
+        "HAUGAN Timon",
+        "NOEL Clement",
+        "MCGRATH Atle Lie"],
+
+    'SL_W': [ 
+        "LJUTIC Zrinka",
+        "LIENSBERGER Katharina",
+        "RAST Camille",
+        "SHIFFRIN Mikaela",
+        "DUERR Lena"],
+
+    "GS_M": [
+        "ODERMATT Marco",
+        "KRISTOFFERSEN Henrik",
+        "MEILLARD Loic",
+        "STEEN OLSEN Alexander",
+        "PINHEIRO BRAATHEN Lucas"
+        ],
+
+    "GS_W": [
+        "BRIGNONE Federica",
+        "ROBINSON Alice",
+        "HECTOR Sara",
+        "STJERNESUND Thea Louise",
+        "GUT-BEHRAMI Lara",
+    ],
+
+    "SG_M": [
+        "ODERMATT Marco",
+        "KRIECHMAYR Vincent",
+        "ROGENTIN Stefan",
+        "VON ALLMEN Franjo",
+        "MOELLER Fredrik",
+    ],
+
+    "SG_W": [
+        "BRIGNONE Federica",
+        "GUT-BEHRAMI Lara",
+        "GOGGIA Sofia",
+        "LIE Kajsa Vickhoff",
+        "MACUGA Lauren",
+    ],
+
+    "DH_M": [
+        "ODERMATT Marco",
+        "VON ALLMEN Franjo",
+        "MONNEY Alexis",
+        "HROBAT Miha",
+        "PARIS Dominik",
+    ],
+
+    "DH_W": [
+        "HUETTER Cornelia",
+        "BRIGNONE Federica",
+        "GOGGIA Sofia",
+        "JOHNSON Breezy",
+        "MACUGA Lauren",
+    ]
+}

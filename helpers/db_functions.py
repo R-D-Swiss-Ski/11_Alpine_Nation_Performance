@@ -57,3 +57,24 @@ def get_result(race_id):
 
     df = load_datapool(query_races)
     return df
+
+def get_result_topn(race_id, n):
+    query_races = f"""
+    SELECT Raceid, Seasoncode, Sectorcode, Disciplinecode, Catcode, Racedate, Place, Nationcode, Gender, Competitorname, Competitorid, Competitor_Nationcode, Status, Racepoints, Position, Details 
+    FROM swissski-production.raw_fis.fis_results
+    WHERE Raceid={race_id} AND Position<={n} AND Position <>0;
+    """
+
+    df = load_datapool(query_races)
+    return df
+
+def get_races_place(place, season, gender, discipline):
+    """Get races from a specific place only from the past"""
+    query_races = f"""
+    SELECT Raceid, Eventid, Seasoncode, Disciplinecode, Catcode, Gender, Racedate, Place, Nationcode, Sectorcode, Disciplinename, Catname, Livestatus1, Webcomment  
+    FROM swissski-production.raw_fis.fis_races
+    WHERE Catcode="WC" AND Sectorcode="AL" AND Seasoncode >= {season-5} AND Seasoncode < {season} AND Gender = '{gender}' AND Disciplinecode = '{discipline}' AND Place='{place}';
+    """
+    df = load_datapool(query_races)
+
+    return df
