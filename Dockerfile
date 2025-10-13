@@ -25,14 +25,14 @@ sslKeyFile = \"/certs/privkey.pem\"\n" \
     > /root/.streamlit/config.toml
 
 # Copy start up script
-COPY start.sh .
-RUN chmod +x start.sh
+# COPY start.sh .
+# RUN chmod +x start.sh
 
 # Streamlit default port
 EXPOSE 8501
 
 # call start up script
-CMD ["./start.sh"]
+# CMD ["./start.sh"]
 
 # Run your Streamlit app
 CMD ["streamlit", "run", "app.py", "--server.address=0.0.0.0", "--server.port=8501"]
