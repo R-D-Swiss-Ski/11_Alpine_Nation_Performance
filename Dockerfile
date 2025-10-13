@@ -34,5 +34,5 @@ EXPOSE 8501
 # call start up script
 CMD ["./start.sh"]
 
-# Run your Streamlit app
-CMD ["streamlit", "run", "app.py", "--server.address=0.0.0.0", "--server.port=8501"]
+# # Run your Streamlit app
+# CMD ["streamlit", "run", "app.py", "--server.address=0.0.0.0", "--server.port=8501"]
