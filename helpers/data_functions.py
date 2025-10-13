@@ -50,6 +50,22 @@ def get_races(season, gender, discipline):
     
     return races
 
+def get_races_place(place, season, gender, discipline):
+    races_place = pd.DataFrame()
+    races_place = dbf.get_races_place(place, season, gender, discipline)
+
+    if not races_place.empty:
+        races_place = races_place[races_place['Webcomment'] != "Cancelled"]
+    return races_place
+
+def get_results_topn(race_ids, n):
+    results = pd.DataFrame()
+    for race_id in race_ids:
+        result = dbf.get_result_topn(race_id, n)
+        results = pd.concat([result, results], ignore_index=True)
+
+    return results
+
 def get_season(date):
     month = date.month
     if month >= 5:
