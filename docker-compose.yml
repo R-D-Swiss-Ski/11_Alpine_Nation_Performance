@@ -19,4 +19,4 @@ services:
       # Mount your Let's Encrypt certs read-only
       - /etc/letsencrypt/live/dev.streamlit.swiss-ski.ch/fullchain.pem:/certs/fullchain.pem:ro
       - /etc/letsencrypt/live/dev.streamlit.swiss-ski.ch/privkey.pem:/certs/privkey.pem:ro
-      - /secrest/secrets.toml:/app/.streamlit/secrets.toml:ro
+      - streamlit_data:/app
