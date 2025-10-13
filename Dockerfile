@@ -24,7 +24,7 @@ sslCertFile = \"/certs/fullchain.pem\"\n\
 sslKeyFile = \"/certs/privkey.pem\"\n" \
     > /root/.streamlit/config.toml
 
-cp /.streamlit/secrets.toml /root/.streamlit/secrets.toml
+RUN cp /.streamlit/secrets.toml /root/.streamlit/secrets.toml
 # Streamlit default port
 EXPOSE 8501
 
