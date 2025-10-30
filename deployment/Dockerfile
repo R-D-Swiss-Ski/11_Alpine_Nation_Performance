@@ -12,7 +12,7 @@ WORKDIR /app
 COPY . .
 
 # Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r deployment/requirements.txt
 
 # Create Streamlit config directory and SSL settings
 RUN mkdir -p /root/.streamlit && \
@@ -25,7 +25,7 @@ sslKeyFile = \"/certs/privkey.pem\"\n" \
     > /root/.streamlit/config.toml
 
 # Copy start up script
-COPY start.sh .
+COPY deployment/start.sh .
 RUN chmod +x start.sh
 
 # Streamlit default port

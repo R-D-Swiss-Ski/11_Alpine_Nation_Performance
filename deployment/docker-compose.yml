@@ -3,9 +3,9 @@ version: '3.8'
 services:
   streamlit_app:
     build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: alpine_nation_performance
+      context: ..
+      dockerfile: deployment/Dockerfile
+    container_name: 11_alpine_nation_performance
     ports:
       - "8507:8501"  # change port
     restart: always
