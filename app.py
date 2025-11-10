@@ -78,7 +78,7 @@ df_results_wcpoints_overall = d.create_wc_points_df(season=selected_season, gend
 
 #get data for future events if selected season = current season
 if st.session_state.show_future:
-    df_future_races = d.get_races(selected_season,['All'], ['All'])
+    df_future_races = d.get_races_upcoming(selected_season,['All'], ['All'], datetime.today().date())
 
 if not df_results_wcpoints_overall.empty:
     df_nations_cup_overall = df_results_wcpoints_overall[['Nation', 'WCPoints']]
