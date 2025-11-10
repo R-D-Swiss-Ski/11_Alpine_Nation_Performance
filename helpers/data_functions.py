@@ -50,6 +50,22 @@ def get_races(season, gender, discipline):
     
     return races
 
+def get_races_upcoming(season, gender, discipline, today):
+    races = pd.DataFrame()
+    if 'All' in discipline:
+        discipline = ['GS', 'SL', 'DH', 'SG']
+    if 'All' in gender:
+        gender = ['M', 'W']
+    for d in discipline:
+        for g in gender:
+            race = dbf.get_races_upcoming_dp(season=season, discipline=d, gender=g, today=today)
+            races = pd.concat([race, races], ignore_index=True)
+    # drop cancelled races
+    races = races[races['Webcomment'] != "Cancelled"]
+    
+    return races
+
+
 def get_races_place(place, season, gender, discipline):
     races_place = pd.DataFrame()
     races_place = dbf.get_races_place(place, season, gender, discipline)
