@@ -24,7 +24,7 @@ def overall_view(df_nations_overall, df_wcpoints_overall, color_mapping, top5):
         xaxis_title="Nation",
     )
 
-    st.plotly_chart(overall_nation_cup_fig, use_container_width=True)
+    st.plotly_chart(overall_nation_cup_fig, width='stretch')
 
     #Wins, 2nd, 3rd, 4-15, 16-30 per nation and discipline AND points per nation and discipline AND % Points
     st.subheader("Summary Table")

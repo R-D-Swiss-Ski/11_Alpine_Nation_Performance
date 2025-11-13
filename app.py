@@ -9,6 +9,7 @@ from helpers.constants import COLOR_NATIONS, FIS_SEASON, RANKING_2025
 from views.nations import nations_view
 from views.nation_details import nation_details_view
 from views.overall import overall_view
+from views.ranking import ranking_view
 
 st.set_page_config(
     initial_sidebar_state="collapsed",
@@ -54,35 +55,61 @@ if 'hidden_feature' not in st.query_params:
     st.query_params.hidden_feature = ''
 
 if 'selected_season' not in st.session_state:
-    st.session_state.selected_season = "25/26"
+    st.session_state.selected_season = ""
 
-#pick a season
+if 'is_ranking' not in st.session_state:
+    st.session_state.is_ranking = False
+
+#*Season selection
+season_options = list(FIS_SEASON.values())
 default_season = d.get_season(datetime.today())
 current_season = default_season
-default_season = FIS_SEASON.get(default_season)
-season_options = list(FIS_SEASON.values())
-default_index = season_options.index(default_season)
-season_col1, season_col2 = st.columns([0.3,0.7])
-season_picker = season_col1.selectbox(label=":blue[Select Season]", options=season_options, index=default_index, key='season_selection')
-selected_season = next(key for key, value in FIS_SEASON.items() if value == season_picker)
-st.session_state.selected_season = selected_season
-
-if selected_season == current_season:
-    st.session_state.show_future = True
-else:
-    st.session_state.show_future = False
-
-#*Set page title
 if st.session_state.main:
-    st.header(f"Alpine Nation Performance {season_picker}")
+    # check if season selection in session state
+    if st.session_state.selected_season != "":
+        stored_season=st.session_state.selected_season
+        preselected_value = FIS_SEASON.get(stored_season)
 
+        # find index in season_options
+        if preselected_value in season_options:
+            default_index = season_options.index(preselected_value)
+        else:
+            default_index = 0  
+
+        # render selectbox with stored season
+        season_col1, season_col2 = st.columns([0.3, 0.7])
+        season_picker = season_col1.selectbox(
+            label=":blue[Select Season]",
+            options=season_options,
+            index=default_index,
+            key="season_selection"
+        )
+        # set session state
+        selected_season = next(key for key, value in FIS_SEASON.items() if value == season_picker)
+        st.session_state.selected_season = selected_season
+    else:
+        
+        default_season = FIS_SEASON.get(default_season)
+        default_index = season_options.index(default_season)
+
+        season_col1, season_col2 = st.columns([0.3,0.7])
+        season_picker = season_col1.selectbox(
+            label=":blue[Select Season]",
+            options=season_options, 
+            index=default_index, 
+            key='season_selection')
+        selected_season = next(key for key, value in FIS_SEASON.items() if value == season_picker)
+        st.session_state.selected_season = selected_season
+
+    st.session_state.show_future = (st.session_state.selected_season == current_season)
+    
 
 #get data overall
-df_results_wcpoints_overall = d.create_wc_points_df(season=selected_season, genders=['All'], disciplines=['All'])
+df_results_wcpoints_overall = d.create_wc_points_df(season=st.session_state.selected_season, genders=['All'], disciplines=['All'])
 
 #get data for future events if selected season = current season
 if st.session_state.show_future:
-    df_future_races = d.get_races_upcoming(selected_season,['All'], ['All'], datetime.today().date())
+    df_future_races = d.get_races_upcoming(st.session_state.selected_season,['All'], ['All'], datetime.today().date())
 
 if not df_results_wcpoints_overall.empty:
     df_nations_cup_overall = df_results_wcpoints_overall[['Nation', 'WCPoints']]
@@ -97,6 +124,8 @@ if not df_results_wcpoints_overall.empty:
     color_mapping = {nation: COLOR_NATIONS.get(nation, "#8D8D8D") if nation in top5_nations['Nation'].values else '#8D8D8D' for nation in nations}
 
     if st.session_state.main:
+        #*Set page title
+        st.header(f"Alpine Nation Performance {season_picker}")
         tab1, tab2 = st.tabs(["By Gender and Discipline", "Overall"])
         with tab1:
             nations_view(color_mapping, top5)
@@ -106,6 +135,9 @@ if not df_results_wcpoints_overall.empty:
 
     if st.session_state.details:
         nation_details_view()
+
+    if st.session_state.is_ranking:
+        ranking_view()
 else:
     st.warning("No data to show")
 

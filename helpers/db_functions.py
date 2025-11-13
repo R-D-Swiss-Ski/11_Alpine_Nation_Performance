@@ -69,6 +69,16 @@ def get_result(race_id):
     df = load_datapool(query_races)
     return df
 
+def get_result_date(race_date, gender, discipline):
+    query_races = f"""
+    SELECT Raceid, Seasoncode, Sectorcode, Disciplinecode, Catcode, Racedate, Place, Nationcode, Gender, Competitorname, Competitorid, Competitor_Nationcode, Status, Racepoints, Position, Details 
+    FROM swissski-production.raw_fis.fis_results
+    WHERE Racedate='{race_date}' AND Gender = '{gender}' AND Disciplinecode = '{discipline}';
+    """
+
+    df = load_datapool(query_races)
+    return df
+
 def get_result_topn(race_id, n):
     query_races = f"""
     SELECT Raceid, Seasoncode, Sectorcode, Disciplinecode, Catcode, Racedate, Place, Nationcode, Gender, Competitorname, Competitorid, Competitor_Nationcode, Status, Racepoints, Position, Details 
