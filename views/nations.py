@@ -19,9 +19,16 @@ def nations_view(color_mapping, top5):
 
 
     filter1, filter2, filter3 = st.columns(3)
+    
+    default_gender = st.session_state.gender
+    gender_map = {"M": 0, "F": 1, "All": 2}
+    gender_index = gender_map.get(default_gender, 0)
+    gender_filter = filter1.selectbox(":blue[Gender]", options=GENDER, index=gender_index)
 
-    gender_filter = filter1.selectbox(":blue[Gender]", options=GENDER) 
-    discipline_filter = filter2.selectbox(":blue[Discipline]", options=DISCIPLINES)
+    discipline_map={"DH": 0, "SG": 1, "GS": 2, "SL": 3, "All": 4}
+    default_discipline = st.session_state.discipline
+    discipline_index =  discipline_map.get(default_discipline, 0)
+    discipline_filter = filter2.selectbox(":blue[Discipline]", options=DISCIPLINES, index=discipline_index)
 
     #get upcoming race and last race
     date_today = datetime.today()
@@ -105,7 +112,7 @@ def nations_view(color_mapping, top5):
         )
 
         st.subheader("Nations Ranking per Discipline")
-        st.plotly_chart(nation_cup_fig, use_container_width=True)
+        st.plotly_chart(nation_cup_fig, width='stretch')
 
         #*Card views (1st View)
         ##Nation, Points, Points by gender, delta to last race
@@ -209,4 +216,4 @@ def nations_view(color_mapping, top5):
             color_discrete_map=COLOR_NATIONS
         )
         fig_points_per_week.update_traces(mode="markers+lines")
-        st.plotly_chart(fig_points_per_week, use_container_width=True)
+        st.plotly_chart(fig_points_per_week, width='stretch')
